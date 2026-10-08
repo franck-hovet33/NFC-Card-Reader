@@ -2,7 +2,7 @@ package com.example.nfccardreader;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.nfc.Ndef;
+import android.nfc.tech.Ndef;
 import android.nfc.NdefMessage;
 import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
