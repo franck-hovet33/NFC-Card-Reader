@@ -1,0 +1,29 @@
+name: Build NFC Card Reader APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Create Android project
+      run: |
+        mkdir -p app/src/main/java/com/example/nfccardreader app/src/main/res/values
+        cp MainActivity.java app/src/main/java/com/example/nfccardreader/MainActivity.java
+        printf '%s\n' 'pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }' 'dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }' 'rootProject.name="NFC-Card-Reader"' 'include(":app")' > settings.gradle
+        printf '%s\n' 'plugins { id "com.android.application" version "8.6.1" apply false }' > build.gradle
+        printf '%s\n' 'plugins { id "com.android.application" }' 'android { namespace "com.example.nfccardreader"; compileSdk 35; defaultConfig { applicationId "com.example.nfccardreader"; minSdk 21; targetSdk 28; versionCode 1; versionName "1.0" } }' > app/build.gradle
+        cat > app/src/main/AndroidManifest.xml <<'XML'
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android"><uses-permission android:name="android.permission.NFC"/><uses-feature android:name="android.hardware.nfc" android:required="false"/><application android:theme="@style/AppTheme" android:label="NFC Card Reader"><activity android:name=".MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter><intent-filter><action android:name="android.nfc.action.TAG_DISCOVERED"/><category android:name="android.intent.category.DEFAULT"/></intent-filter></activity></application></manifest>
+        XML
+        printf '%s\n' '<resources><style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar"/></resources>' > app/src/main/res/values/styles.xml
+        gradle wrapper --gradle-version 8.7
+        chmod +x gradlew
+    - name: Build APK
+      run: ./gradlew assembleDebug --no-daemon
+    - uses: actions/upload-artifact@v4
+      with:
+        name: NFC-Card-Reader-debug-apk
+        path: app/build/outputs/apk/debug/app-debug.apk
