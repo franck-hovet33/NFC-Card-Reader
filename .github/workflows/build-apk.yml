@@ -1,4 +1,4 @@
-name: Build NFC Card Reader APK
+name: Build NFC Manager APK
 
 on:
   workflow_dispatch:
@@ -13,16 +13,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Télécharger le dépôt
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Installer Java 17
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Installer Gradle 8.7
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
 
@@ -80,8 +80,8 @@ jobs:
                   applicationId 'com.example.nfccardreader'
                   minSdk 21
                   targetSdk 28
-                  versionCode 4
-                  versionName '2.0'
+                  versionCode 5
+                  versionName '3.0'
               }
           }
           APP
@@ -92,57 +92,5 @@ jobs:
               <uses-feature android:name="android.hardware.nfc" android:required="false" />
               <application
                   android:theme="@style/AppTheme"
-                  android:label="NFC Card Reader"
+                  android:label="NFC Manager"
                   android:icon="@drawable/ic_nfc_logo"
-                  android:roundIcon="@drawable/ic_nfc_logo"
-                  android:allowBackup="true">
-                  <activity
-                      android:name=".MainActivity"
-                      android:screenOrientation="unspecified"
-                      android:exported="true">
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN" />
-                          <category android:name="android.intent.category.LAUNCHER" />
-                      </intent-filter>
-                  </activity>
-              </application>
-          </manifest>
-          MANIFEST
-
-          cat > app/src/main/res/values/styles.xml <<'STYLES'
-          <resources>
-              <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
-                  <item name="android:fontFamily">sans</item>
-                  <item name="android:colorAccent">#0084FF</item>
-                  <item name="android:windowLightStatusBar">false</item>
-                  <item name="android:navigationBarColor">#050E1B</item>
-                  <item name="android:windowActionModeOverlay">true</item>
-              </style>
-          </resources>
-          STYLES
-
-          cat > app/src/main/res/drawable/ic_nfc_logo.xml <<'ICON'
-          <vector xmlns:android="http://schemas.android.com/apk/res/android"
-              android:width="48dp"
-              android:height="48dp"
-              android:viewportWidth="48"
-              android:viewportHeight="48">
-              <path android:fillColor="#075DCC" android:pathData="M7,0 L41,0 Q48,0 48,7 L48,41 Q48,48 41,48 L7,48 Q0,48 0,41 L0,7 Q0,0 7,0 Z" />
-              <path android:fillColor="#00000000" android:strokeColor="#FFFFFF" android:strokeWidth="2.8" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M14,20 L28,13 Q31,12 33,16 L38,27 Q39,30 36,32 L22,39 Q19,40 17,36 L12,25 Q11,22 14,20 Z" />
-              <path android:fillColor="#00000000" android:strokeColor="#7DDEFF" android:strokeWidth="2.6" android:strokeLineCap="round" android:pathData="M9,13 Q16,5 24,9" />
-              <path android:fillColor="#00000000" android:strokeColor="#7DDEFF" android:strokeWidth="2.6" android:strokeLineCap="round" android:pathData="M12,17 Q17,11 22,14" />
-              <path android:fillColor="#00000000" android:strokeColor="#7DDEFF" android:strokeWidth="2.6" android:strokeLineCap="round" android:pathData="M15,21 Q18,17 21,19" />
-          </vector>
-          ICON
-
-          gradle wrapper --gradle-version 8.7
-          chmod +x gradlew
-
-      - name: Compiler l'APK
-        run: ./gradlew assembleDebug --no-daemon
-
-      - name: Publier l'APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: NFC-Card-Reader-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
