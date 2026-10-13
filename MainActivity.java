@@ -63,6 +63,7 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
     private TextView status;
     private TextView details;
     private LinearLayout history;
+    private ScrollView pageScroll;
     private volatile int scanMode = MODE_NONE;
     private volatile boolean processing = false;
     private volatile NdefMessage pendingMessage;
@@ -85,77 +86,86 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
     }
 
     private void buildUI() {
-        ScrollView pageScroll = new ScrollView(this);
+        pageScroll = new ScrollView(this);
         pageScroll.setFillViewport(true);
         pageScroll.setBackgroundColor(BG);
+        pageScroll.setClipToPadding(false);
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(18), dp(16), dp(18), dp(24));
         pageScroll.addView(root, new ScrollView.LayoutParams(-1, -2));
 
+        // En-tête de marque, dans le style de la maquette.
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
 
         ImageView logo = new ImageView(this);
         logo.setImageResource(R.drawable.ic_nfc_logo);
-        LinearLayout.LayoutParams logoParams = new LinearLayout.LayoutParams(dp(62), dp(62));
-        logoParams.rightMargin = dp(13);
+        logo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        LinearLayout.LayoutParams logoParams = new LinearLayout.LayoutParams(dp(68), dp(68));
+        logoParams.rightMargin = dp(14);
         header.addView(logo, logoParams);
 
         LinearLayout brand = new LinearLayout(this);
         brand.setOrientation(LinearLayout.VERTICAL);
-        TextView title = text("NFC Card Reader", 23, WHITE, true);
-        brand.addView(title);
-        TextView subtitle = text("Lire  •  Renommer  •  Écrire", 13, MUTED, false);
-        brand.addView(subtitle);
+        brand.addView(text("NFC Manager", 25, WHITE, true));
+        brand.addView(text("Lire  •  Enregistrer  •  Formater", 13, MUTED, false));
         header.addView(brand, new LinearLayout.LayoutParams(0, -2, 1));
-        root.addView(header, marginParams(-1, -2, 0, 0, 0, 18));
+        root.addView(header, marginParams(-1, -2, 0, 0, 0, 19));
 
-        status = text("Initialisation du NFC…", 15, WHITE, true);
-        status.setPadding(dp(14), dp(14), dp(14), dp(14));
-        status.setBackground(round(PANEL_LIGHT, 14));
-        root.addView(status, marginParams(-1, -2, 0, 0, 0, 12));
+        // État du lecteur NFC.
+        LinearLayout statusCard = new LinearLayout(this);
+        statusCard.setOrientation(LinearLayout.VERTICAL);
+        statusCard.setPadding(dp(15), dp(13), dp(15), dp(13));
+        statusCard.setBackground(round(PANEL, 15));
+        TextView statusHeading = text("ÉTAT DU NFC", 11, MUTED, true);
+        statusCard.addView(statusHeading, marginParams(-1, -2, 0, 0, 0, 5));
+        status = text("Vérification du NFC…", 15, WHITE, true);
+        status.setLineSpacing(dp(2), 1f);
+        statusCard.addView(status, new LinearLayout.LayoutParams(-1, -2));
+        root.addView(statusCard, marginParams(-1, -2, 0, 0, 0, 12));
 
-        Button nfcSettings = button("⚡  Activer / régler le NFC", BLUE);
+        Button nfcSettings = button("⚡  Activer / régler le NFC", PANEL_LIGHT);
         nfcSettings.setOnClickListener(v -> openNfcSettings());
-        root.addView(nfcSettings, marginParams(-1, -2, 0, 0, 0, 9));
+        root.addView(nfcSettings, marginParams(-1, dp(46), 0, 0, 0, 19));
 
-        LinearLayout actions = new LinearLayout(this);
-        actions.setOrientation(LinearLayout.HORIZONTAL);
-        Button read = button("⌕  LIRE", BLUE);
-        read.setOnClickListener(v -> beginRead());
-        Button format = button("✎  FORMATER", GREEN);
-        format.setOnClickListener(v -> showFormatOptions());
-        LinearLayout.LayoutParams half = new LinearLayout.LayoutParams(0, dp(54), 1);
-        half.rightMargin = dp(6);
-        actions.addView(read, half);
-        LinearLayout.LayoutParams half2 = new LinearLayout.LayoutParams(0, dp(54), 1);
-        half2.leftMargin = dp(6);
-        actions.addView(format, half2);
-        root.addView(actions, marginParams(-1, -2, 0, 0, 0, 8));
+        // Deux actions principales avec zones tactiles larges.
+        root.addView(createActionCard("▣", "Lire une carte", 
+                "Lire l’identifiant, les technologies et les données disponibles", BLUE,
+                v -> beginRead()), marginParams(-1, dp(88), 0, 0, 0, 11));
+        root.addView(createActionCard("✎", "Formater une carte",
+                "Écrire un contenu ou reprendre les données d’une carte de l’historique", 
+                Color.rgb(85, 75, 230), v -> showFormatOptions()),
+                marginParams(-1, dp(88), 0, 0, 0, 13));
 
-        Button stop = button("Arrêter la lecture / écriture", PANEL_LIGHT);
-        stop.setOnClickListener(v -> stopScanning("Lecture / écriture arrêtée."));
-        root.addView(stop, marginParams(-1, -2, 0, 0, 0, 17));
+        // Raccourcis inspirés de la barre de navigation de la maquette.
+        LinearLayout shortcuts = new LinearLayout(this);
+        shortcuts.setOrientation(LinearLayout.HORIZONTAL);
+        shortcuts.setGravity(Gravity.CENTER_VERTICAL);
+        addShortcut(shortcuts, "◷", "Historique", v -> scrollToHistory());
+        addShortcut(shortcuts, "⚙", "Paramètres", v -> openNfcSettings());
+        addShortcut(shortcuts, "ⓘ", "À propos", v -> showAbout());
+        root.addView(shortcuts, marginParams(-1, dp(70), 0, 0, 0, 20));
 
         TextView detailsTitle = text("Dernière carte détectée", 19, WHITE, true);
         root.addView(detailsTitle, marginParams(-1, -2, 0, 0, 0, 8));
 
-        details = text("Appuie sur LIRE, puis approche une carte du dos du téléphone.\n\nAvec FORMATER, tu peux écrire un contenu ou recopier les données NDEF d'une carte enregistrée.", 14, MUTED, false);
-        details.setPadding(dp(14), dp(14), dp(14), dp(14));
-        details.setMinHeight(dp(100));
-        details.setBackground(round(PANEL, 14));
-        root.addView(details, marginParams(-1, -2, 0, 0, 0, 22));
+        details = text("Appuie sur « Lire une carte », puis approche une carte du dos du téléphone.\n\nAvec « Formater une carte », tu peux écrire un texte, un lien, un numéro ou recopier les données NDEF d’une carte enregistrée.", 14, MUTED, false);
+        details.setLineSpacing(dp(3), 1f);
+        details.setPadding(dp(15), dp(15), dp(15), dp(15));
+        details.setMinHeight(dp(104));
+        details.setBackground(round(PANEL, 15));
+        root.addView(details, marginParams(-1, -2, 0, 0, 0, 23));
 
         LinearLayout historyHeader = new LinearLayout(this);
         historyHeader.setGravity(Gravity.CENTER_VERTICAL);
-        TextView historyTitle = text("Cartes enregistrées", 19, WHITE, true);
+        TextView historyTitle = text("Historique des cartes", 19, WHITE, true);
         historyHeader.addView(historyTitle, new LinearLayout.LayoutParams(0, -2, 1));
         Button clear = button("Effacer", RED);
         clear.setTextSize(12);
-        historyHeader.addView(clear, new LinearLayout.LayoutParams(-2, dp(40)));
+        historyHeader.addView(clear, new LinearLayout.LayoutParams(-2, dp(39)));
         clear.setOnClickListener(v -> confirmClearHistory());
         root.addView(historyHeader, marginParams(-1, -2, 0, 0, 0, 10));
 
@@ -163,13 +173,86 @@ public class MainActivity extends Activity implements NfcAdapter.ReaderCallback 
         history.setOrientation(LinearLayout.VERTICAL);
         root.addView(history, new LinearLayout.LayoutParams(-1, -2));
 
-        TextView footer = text("Hors ligne • Les données restent sur le téléphone\nL'écriture dépend du type et de la protection de la carte.", 12, MUTED, false);
+        TextView footer = text("Hors ligne  •  Données stockées sur ce téléphone\nL’écriture dépend du type et des protections de la carte.", 12, MUTED, false);
         footer.setGravity(Gravity.CENTER);
         footer.setPadding(0, dp(18), 0, dp(2));
         root.addView(footer, new LinearLayout.LayoutParams(-1, -2));
 
         setContentView(pageScroll);
         refreshHistory();
+    }
+
+    private LinearLayout createActionCard(String glyph, String title, String subtitle,
+                                          int color, View.OnClickListener listener) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dp(15), dp(12), dp(15), dp(12));
+        GradientDrawable gradient = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{color, darken(color)});
+        gradient.setCornerRadius(dp(17));
+        card.setBackground(gradient);
+        card.setClickable(true);
+        card.setFocusable(true);
+        card.setOnClickListener(listener);
+
+        TextView icon = text(glyph, 28, WHITE, true);
+        icon.setGravity(Gravity.CENTER);
+        icon.setBackground(round(Color.argb(45, 255, 255, 255), 14));
+        card.addView(icon, new LinearLayout.LayoutParams(dp(52), dp(52)));
+
+        LinearLayout words = new LinearLayout(this);
+        words.setOrientation(LinearLayout.VERTICAL);
+        words.setPadding(dp(13), 0, 0, 0);
+        words.addView(text(title, 18, WHITE, true));
+        TextView description = text(subtitle, 12, Color.rgb(228, 239, 255), false);
+        description.setPadding(0, dp(3), 0, 0);
+        words.addView(description);
+        card.addView(words, new LinearLayout.LayoutParams(0, -2, 1));
+        card.addView(text("›", 30, WHITE, true));
+        return card;
+    }
+
+    private void addShortcut(LinearLayout parent, String glyph, String label,
+                             View.OnClickListener listener) {
+        LinearLayout tile = new LinearLayout(this);
+        tile.setOrientation(LinearLayout.VERTICAL);
+        tile.setGravity(Gravity.CENTER);
+        tile.setPadding(dp(3), dp(7), dp(3), dp(6));
+        tile.setBackground(round(PANEL, 12));
+        tile.setClickable(true);
+        tile.setFocusable(true);
+        tile.setOnClickListener(listener);
+        TextView icon = text(glyph, 22, WHITE, true);
+        icon.setGravity(Gravity.CENTER);
+        tile.addView(icon);
+        TextView caption = text(label, 11, MUTED, false);
+        caption.setGravity(Gravity.CENTER);
+        caption.setPadding(0, dp(3), 0, 0);
+        tile.addView(caption);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, -1, 1);
+        params.setMargins(dp(3), 0, dp(3), 0);
+        parent.addView(tile, params);
+    }
+
+    private int darken(int color) {
+        return Color.rgb((int) (Color.red(color) * 0.72f),
+                (int) (Color.green(color) * 0.72f),
+                (int) (Color.blue(color) * 0.72f));
+    }
+
+    private void scrollToHistory() {
+        if (pageScroll != null && history != null) {
+            pageScroll.post(() -> pageScroll.smoothScrollTo(0, Math.max(0, history.getTop() - dp(12))));
+        }
+    }
+
+    private void showAbout() {
+        new AlertDialog.Builder(this)
+                .setTitle("NFC Manager")
+                .setMessage("Lecture, historique, renommage et écriture de données NDEF.\n\nL’application fonctionne hors ligne. Android ne permet pas à une application ordinaire d’activer le NFC silencieusement : le bouton ouvre les réglages système.\n\nLa copie concerne uniquement les données NDEF lisibles et ne copie pas l’UID ni les clés d’une carte sécurisée.")
+                .setPositiveButton("Compris", null)
+                .show();
     }
 
     @Override
