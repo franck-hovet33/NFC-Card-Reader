@@ -1,18 +1,22 @@
-name: Build NFC Manager APK
+name: NFC Manager - APK telechargeable V4
+run-name: NFC Manager APK V4 - ${{ github.run_number }}
 
 on:
   workflow_dispatch:
   push:
-    branches: ["main", "master"]
+    branches:
+      - main
+      - master
 
 permissions:
   contents: read
 
 jobs:
   build:
+    name: Compiler puis publier l'APK
     runs-on: ubuntu-latest
     steps:
-      - name: Télécharger le dépôt
+      - name: Recuperer le depot
         uses: actions/checkout@v4
 
       - name: Installer Java 17
@@ -31,13 +35,22 @@ jobs:
         with:
           packages: 'platform-tools'
 
-      - name: Installer Android 35
+      - name: Installer la plateforme Android necessaire
         shell: bash
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
           sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Générer le projet Android à partir des deux fichiers du dépôt
+      - name: Verifier le code source
+        shell: bash
+        run: |
+          if [ ! -s MainActivity.java ]; then
+            echo "ERREUR : MainActivity.java est absent de la racine du depot."
+            exit 1
+          fi
+          echo "Source Java trouvee : $(wc -c < MainActivity.java) octets."
+
+      - name: Creer le projet Android
         shell: bash
         run: |
           mkdir -p app/src/main/java/com/example/nfccardreader
@@ -59,7 +72,7 @@ jobs:
                   mavenCentral()
               }
           }
-          rootProject.name = "NFC-Card-Reader"
+          rootProject.name = "NFC-Manager"
           include(":app")
           SETTINGS
 
@@ -80,17 +93,4 @@ jobs:
                   applicationId 'com.example.nfccardreader'
                   minSdk 21
                   targetSdk 28
-                  versionCode 5
-                  versionName '3.0'
-              }
-          }
-          APP
-
-          cat > app/src/main/AndroidManifest.xml <<'MANIFEST'
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <uses-permission android:name="android.permission.NFC" />
-              <uses-feature android:name="android.hardware.nfc" android:required="false" />
-              <application
-                  android:theme="@style/AppTheme"
-                  android:label="NFC Manager"
-                  android:icon="@drawable/ic_nfc_logo"
+                  versionCode 7
